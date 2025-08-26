@@ -70,3 +70,28 @@ std::unique_ptr<Frame> AudioFilter::applyFadeOut(const Frame& input, float durat
     }
     return output;
 }
+
+std::unique_ptr<Frame> AudioFilter::applyLowPass(const Frame& input, float alpha){
+    auto output = std::make_unique<Frame>();
+    output->data = input.data;
+    output->time_point = input.time_point;
+    output->width = input.width;
+    output->height = input.height;
+    output->sampleRate = input.sampleRate;
+    output->numChannels = input.numChannels;
+
+    int16_t* samples = reinterpret_cast<int16_t*>(output->data.data());
+    size_t numSamples = output->data.size() / sizeof(int16_t);
+    int numChannels = input.numChannels;
+
+    std::vector<float> prevSample(numChannels, 0.0f);
+    for (size_t i = 0; i < numChannels; ++i){
+        int channel = i % numChannels;
+
+        float in = static_cast<float>(samples[i]);
+        float filtered = alpha * in + (1.0f - alpha) * prevSample[channel];
+        prevSample[channel] = filtered;
+        samples[i] = static_cast<int16_t>(std::clamp(filtered, -32768.0f, 32767.0f));
+    }
+    return output;
+}
